@@ -72,7 +72,8 @@ public class KitRepository : IKitRepository
                 k.Nome AS Nome,
                 i.Id AS ItemId,
                 i.Nome AS ItemNome,
-                ki.Quantidade AS Quantidade
+                ki.Quantidade AS Quantidade,
+                ki.IsPainel AS IsPainel
             FROM Kit k
             LEFT JOIN KitItem ki ON k.Id = ki.KitId
             LEFT JOIN Item i ON ki.ItemId = i.Id

@@ -17,13 +17,13 @@ public class ItemRepository : IItemRepository
 
     public async Task<IEnumerable<Item>> GetAllAsync()
     {
-        var sql = @"SELECT Id, Nome, FornecedorId FROM Item;";
+        var sql = @"SELECT Id, Nome, FornecedorId, Descricao FROM Item;";
         return await _db.QueryAsync<Item>(sql);
     }
 
     public async Task<Item?> GetItemByIdAsync(int id)
     {
-        var sql = @"SELECT Id, nome, FornecedorId 
+        var sql = @"SELECT Id, nome, FornecedorId, Descricao 
                     FROM Item 
                     WHERE Id = @id;";
         return await _db.QueryFirstOrDefaultAsync<Item>(sql, new { id });
@@ -34,9 +34,10 @@ public class ItemRepository : IItemRepository
         var parameters = new DynamicParameters();
         parameters.Add("@nome", item.Nome);
         parameters.Add("@fornecedorId", item.FornecedorId);
+        parameters.Add("@descricao", item.Descricao);
 
-        string sql = @"INSERT INTO Item (nome, FornecedorId)
-                    VALUES (@nome, @fornecedorId);
+        string sql = @"INSERT INTO Item (nome, FornecedorId, Descricao)
+                    VALUES (@nome, @fornecedorId, @descricao);
                     SELECT LAST_INSERT_ID()";
 
         return await _db.ExecuteScalarAsync<int>(sql, parameters);
@@ -48,10 +49,12 @@ public class ItemRepository : IItemRepository
         parameters.Add("@id", item.Id);
         parameters.Add("@nome", item.Nome);
         parameters.Add("@fornecedorId", item.FornecedorId);
+        parameters.Add("@descricao", item.Descricao);
 
         string sql = @"UPDATE Item
                     SET nome = @nome
                     AND fornecedorId = @fornecedorId
+                    AND descricao = @descricao
                     WHERE id= @id";
 
         var affectedRows = await _db.ExecuteAsync(sql, parameters);
