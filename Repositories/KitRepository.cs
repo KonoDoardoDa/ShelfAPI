@@ -64,8 +64,6 @@ public class KitRepository : IKitRepository
         var affectedRows = await _db.ExecuteAsync(sql, new { Id = id });
         return affectedRows > 0;
     }
-
-    // New: returns kit plus item names and quantities (single query with join)
     public async Task<KitDetails?> GetKitWithItemsAsync(int id)
     {
         const string sql = @"
@@ -93,7 +91,6 @@ public class KitRepository : IKitRepository
                     kitDict.Add(kitEntry.Id, kitEntry);
                 }
 
-                // If no matching item row, ItemId will be 0 (default). Skip in that case.
                 if (kitItem != null && kitItem.ItemId != 0)
                 {
                     kitEntry.Items.Add(kitItem);
