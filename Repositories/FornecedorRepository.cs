@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using ShelfApi.Infrastructure;
 using ShelfApi.Models;
 using System.Data;
 
@@ -6,29 +7,32 @@ namespace ShelfApi.Repositories
 {
     public class FornecedorRepository : IFornecedorRepository
     {
-        private readonly IDbConnection _db;
+        private readonly IDbConnectionFactory _factory;
 
-        public FornecedorRepository(IDbConnection db)
+        public FornecedorRepository(IDbConnectionFactory factory)
         {
-            _db = db;
+            _factory = factory;
         }
 
         public async Task<IEnumerable<Fornecedor>> GetAllAsync()
         {
-            var sql = "SELECT Id, Nome FROM Fornecedor;";
+            const string sql = "SELECT Id, Nome FROM Fornecedor;";
 
-            return await _db.QueryAsync<Fornecedor>(sql);
+            using var db = _factory.CreateConnection();
 
+            return await db.QueryAsync<Fornecedor>(sql);
         }
 
         public async Task<int> CreateFornecedor(Fornecedor fornecedor)
         {
             var parameters = new DynamicParameters();
             parameters.Add("@nome", fornecedor.Nome);
-            string sql = @"INSERT INTO Fornecedor (Nome)
+            const string sql = @"INSERT INTO Fornecedor (Nome)
                            VALUES (@nome);
                            SELECT LAST_INSERT_ID();";
-            return await _db.ExecuteScalarAsync<int>(sql, parameters);
+
+            using var db = _factory.CreateConnection();
+            return await db.ExecuteScalarAsync<int>(sql, parameters);
         }
 
         public async Task<int> UpdateFornecedor(Fornecedor fornecedor)
@@ -39,18 +43,19 @@ namespace ShelfApi.Repositories
             string sql = @"UPDATE Fornecedor
                            SET Nome = @nome
                            WHERE Id = @id;";
-            var affectedRows = await _db.ExecuteAsync(sql, parameters);
-            return affectedRows;
+            using var db = _factory.CreateConnection();
+            return await db.ExecuteAsync(sql, parameters);
         }
 
-        public async Task<int> DeleteFornecedor(int fornecedorId)
+        public async Task<bool> DeleteFornecedor(int fornecedorId)
         {
             var parameters = new DynamicParameters();
             parameters.Add("@id", fornecedorId);
             string sql = @"DELETE FROM Fornecedor
                            WHERE Id = @id;";
-            var affectedRows = await _db.ExecuteAsync(sql, parameters);
-            return affectedRows;
+            using var db = _factory.CreateConnection();
+            var affectedRows = await db.ExecuteAsync(sql, parameters);
+            return affectedRows > 0;
         }
     }
 }

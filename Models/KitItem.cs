@@ -7,4 +7,5 @@ public class KitItem
     public int KitId { get; set;}
     public int ItemId { get; set;}
     public int Quantidade { get; set;}
+    public bool IsPainel { get; set;}
 }

@@ -3,38 +3,44 @@ using System.Threading.Tasks;
 using Dapper;
 using ShelfApi.Models;
 using System.Data;
+using ShelfApi.Infrastructure;
+
 
 namespace ShelfApi.Repositories;
 
 public class KitItemRepository : IKitItemRepository
 {
-    private readonly IDbConnection _db;
+    private readonly IDbConnectionFactory _factory;
 
-    public KitItemRepository(IDbConnection db)
+    public KitItemRepository(IDbConnectionFactory factory)
     {
-        _db = db;
+        _factory = factory;
     }
 
     public async Task<IEnumerable<KitItem>> GetAllAsync()
     {
-        const string sql = @"SELECT KitId, ItemId, Quantidade FROM KitItem;";
-        return await _db.QueryAsync<KitItem>(sql);
+        const string sql = @"SELECT KitId, ItemId, Quantidade, IsPainel FROM KitItem;";
+        using var db = _factory.CreateConnection();
+        return await db.QueryAsync<KitItem>(sql);
     }
 
     public async Task<IEnumerable<KitItem>> GetByKitIdAsync(int kitId)
     {
-        const string sql = @"SELECT KitId, ItemId, Quantidade
+        const string sql = @"SELECT KitId, ItemId, Quantidade, IsPainel
                              FROM KitItem
                              WHERE KitId = @kitId;";
-        return await _db.QueryAsync<KitItem>(sql, new { kitId });
+        using var db = _factory.CreateConnection();
+        return await db.QueryAsync<KitItem>(sql, new { kitId });
     }
 
     public async Task<KitItem?> GetKitItemAsync(int kitId, int itemId)
     {
-        const string sql = @"SELECT KitId, ItemId, Quantidade
+        const string sql = @"SELECT KitId, ItemId, Quantidade, IsPainel
                              FROM KitItem
                              WHERE KitId = @kitId AND ItemId = @itemId;";
-        return await _db.QueryFirstOrDefaultAsync<KitItem>(sql, new { kitId, itemId });
+
+        using var db = _factory.CreateConnection();
+        return await db.QueryFirstOrDefaultAsync<KitItem>(sql, new { kitId, itemId });
     }
 
     public async Task<bool> CreateKitItem(KitItem kitItem)
@@ -43,12 +49,14 @@ public class KitItemRepository : IKitItemRepository
         parameters.Add("@kitId", kitItem.KitId);
         parameters.Add("@itemId", kitItem.ItemId);
         parameters.Add("@quantidade", kitItem.Quantidade);
+        parameters.Add("@isPainel", kitItem.IsPainel);
 
         const string sql = @"
-            INSERT INTO KitItem (KitId, ItemId, Quantidade)
-            VALUES (@kitId, @itemId, @quantidade);";
+            INSERT INTO KitItem (KitId, ItemId, Quantidade, IsPainel)
+            VALUES (@kitId, @itemId, @quantidade, @isPainel);";
 
-        var affectedRows = await _db.ExecuteAsync(sql, parameters);
+        using var db = _factory.CreateConnection();
+        var affectedRows = await db.ExecuteAsync(sql, parameters);
         return affectedRows > 0;
     }
 
@@ -58,20 +66,24 @@ public class KitItemRepository : IKitItemRepository
         parameters.Add("@kitId", kitItem.KitId);
         parameters.Add("@itemId", kitItem.ItemId);
         parameters.Add("@quantidade", kitItem.Quantidade);
+        parameters.Add("@isPainel", kitItem.IsPainel);
 
         const string sql = @"
             UPDATE KitItem
-            SET Quantidade = @quantidade
+            SET Quantidade = @quantidade, IsPainel = @isPainel
             WHERE KitId = @kitId AND ItemId = @itemId;";
 
-        var affectedRows = await _db.ExecuteAsync(sql, parameters);
+        using var db = _factory.CreateConnection();
+        var affectedRows = await db.ExecuteAsync(sql, parameters);
         return affectedRows > 0;
     }
 
     public async Task<bool> DeleteKitItem(int kitId, int itemId)
     {
         const string sql = @"DELETE FROM KitItem WHERE KitId = @kitId AND ItemId = @itemId;";
-        var affectedRows = await _db.ExecuteAsync(sql, new { kitId, itemId });
+
+        using var db = _factory.CreateConnection();
+        var affectedRows = await db.ExecuteAsync(sql, new { kitId, itemId });
         return affectedRows > 0;
     }
 }

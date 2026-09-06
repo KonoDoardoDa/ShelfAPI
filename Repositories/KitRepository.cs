@@ -1,25 +1,25 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Dapper;
 using ShelfApi.Models;
 using System.Data;
+using ShelfApi.Infrastructure;
 
 namespace ShelfApi.Repositories;
 
 public class KitRepository : IKitRepository
 {
-    private readonly IDbConnection _db;
+    private readonly IDbConnectionFactory _factory;
 
-    public KitRepository(IDbConnection db)
+    public KitRepository(IDbConnectionFactory factory)
     {
-        _db = db;
+        _factory = factory;
     }
 
     public async Task<IEnumerable<Kit>> GetAllAsync()
     {
         const string sql = @"SELECT Id, Nome FROM Kit;";
-        return await _db.QueryAsync<Kit>(sql);
+
+        using var db = _factory.CreateConnection();
+        return await db.QueryAsync<Kit>(sql);
     }
 
     public async Task<Kit?> GetKitByIdAsync(int id)
@@ -27,7 +27,9 @@ public class KitRepository : IKitRepository
         const string sql = @"SELECT Id, Nome
                              FROM Kit
                              WHERE Id = @id;";
-        return await _db.QueryFirstOrDefaultAsync<Kit>(sql, new { id });
+
+        using var db = _factory.CreateConnection();
+        return await db.QueryFirstOrDefaultAsync<Kit>(sql, new { id });
     }
 
     public async Task<int> CreateKit(Kit kit)
@@ -40,7 +42,9 @@ public class KitRepository : IKitRepository
             VALUES (@nome);
             SELECT LAST_INSERT_ID();";
 
-        return await _db.ExecuteScalarAsync<int>(sql, parameters);
+        using var db = _factory.CreateConnection();
+
+        return await db.ExecuteScalarAsync<int>(sql, parameters);
     }
 
     public async Task<bool> UpdateKit(Kit kit)
@@ -54,14 +58,17 @@ public class KitRepository : IKitRepository
             SET Nome = @nome
             WHERE Id = @id;";
 
-        var affectedRows = await _db.ExecuteAsync(sql, parameters);
+        using var db = _factory.CreateConnection();
+        var affectedRows = await db.ExecuteAsync(sql, parameters);
         return affectedRows > 0;
     }
 
     public async Task<bool> DeleteKit(int id)
     {
         const string sql = "DELETE FROM Kit WHERE Id = @Id;";
-        var affectedRows = await _db.ExecuteAsync(sql, new { Id = id });
+
+        using var db = _factory.CreateConnection();
+        var affectedRows = await db.ExecuteAsync(sql, new { Id = id });
         return affectedRows > 0;
     }
     public async Task<KitDetails?> GetKitWithItemsAsync(int id)
@@ -81,7 +88,9 @@ public class KitRepository : IKitRepository
 
         var kitDict = new Dictionary<int, KitDetails>();
 
-        var mapped = await _db.QueryAsync<KitDetails, KitItemDetail, KitDetails>(
+        using var db = _factory.CreateConnection();
+
+        var mapped = await db.QueryAsync<KitDetails, KitItemDetail, KitDetails>(
             sql,
             (kit, kitItem) =>
             {

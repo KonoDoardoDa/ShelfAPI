@@ -4,8 +4,9 @@ namespace ShelfApi.Models;
 
 public class Item
 {
-    public int Id { get; set;}
+    public int Id { get; set; }
     public string? Nome { get; set; }
     public int FornecedorId { get; set; }
     public string? Descricao { get; set; }
+    public int QuantidadeEstoque { get; set; } = 0;
 }

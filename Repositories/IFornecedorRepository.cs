@@ -6,6 +6,6 @@ namespace ShelfApi.Repositories
         Task<IEnumerable<Fornecedor>> GetAllAsync();
         Task<int> CreateFornecedor(Fornecedor fornecedor);
         Task<int> UpdateFornecedor(Fornecedor fornecedor);
-        Task<int> DeleteFornecedor(int fornecedorId);
+        Task<bool> DeleteFornecedor(int fornecedorId);
     }
 }

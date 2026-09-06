@@ -1,32 +1,47 @@
-using System;
 using Dapper;
+using ShelfApi.Infrastructure;
 using ShelfApi.Models;
-using System.Data;
-using System.Reflection.Metadata;
 
 namespace ShelfApi.Repositories;
 
 public class ItemRepository : IItemRepository
 {
-    private readonly IDbConnection _db;
+    private readonly IDbConnectionFactory _factory;
 
-    public ItemRepository(IDbConnection db)
+    public ItemRepository(IDbConnectionFactory factory)
     {
-        _db = db;
+        _factory = factory;
     }
 
     public async Task<IEnumerable<Item>> GetAllAsync()
     {
-        var sql = @"SELECT Id, Nome, FornecedorId, Descricao FROM Item;";
-        return await _db.QueryAsync<Item>(sql);
+        var sql = @"
+            SELECT 
+                i.Id, 
+                i.Nome, 
+                i.FornecedorId, 
+                i.Descricao, 
+                COALESCE(e.quantidade, 0) AS QuantidadeEstoque 
+            FROM Item i 
+            LEFT JOIN estoque e ON i.Id = e.itemId;";
+        using var db = _factory.CreateConnection();
+        return await db.QueryAsync<Item>(sql);
     }
 
     public async Task<Item?> GetItemByIdAsync(int id)
     {
-        var sql = @"SELECT Id, nome, FornecedorId, Descricao 
-                    FROM Item 
-                    WHERE Id = @id;";
-        return await _db.QueryFirstOrDefaultAsync<Item>(sql, new { id });
+        var sql = @"
+            SELECT 
+                i.Id, 
+                i.Nome, 
+                i.FornecedorId, 
+                i.Descricao, 
+                COALESCE(e.quantidade, 0) AS QuantidadeEstoque 
+            FROM Item i 
+            LEFT JOIN estoque e ON i.Id = e.itemId 
+            WHERE i.Id = @id;";
+        using var db = _factory.CreateConnection();
+        return await db.QueryFirstOrDefaultAsync<Item>(sql, new { id });
     }
 
     public async Task<int> CreateItem(Item item)
@@ -36,11 +51,25 @@ public class ItemRepository : IItemRepository
         parameters.Add("@fornecedorId", item.FornecedorId);
         parameters.Add("@descricao", item.Descricao);
 
-        string sql = @"INSERT INTO Item (nome, FornecedorId, Descricao)
-                    VALUES (@nome, @fornecedorId, @descricao);
-                    SELECT LAST_INSERT_ID()";
+        string sql = @"
+            INSERT INTO Item (nome, FornecedorId, Descricao)
+            VALUES (@nome, @fornecedorId, @descricao);
+            SELECT LAST_INSERT_ID();";
+        using var db = _factory.CreateConnection();
 
-        return await _db.ExecuteScalarAsync<int>(sql, parameters);
+        var newId = await db.ExecuteScalarAsync<int>(sql, parameters);
+
+        // Inicializar saldo em estoque caso não exista
+        if (newId > 0)
+        {
+            var sqlEstoque = @"
+                INSERT INTO estoque (itemId, quantidade) 
+                VALUES (@newId, 0)
+                ON DUPLICATE KEY UPDATE itemId = itemId;";
+            await db.ExecuteAsync(sqlEstoque, new { newId });
+        }
+
+        return newId;
     }
 
     public async Task<bool> UpdateItem(Item item)
@@ -51,22 +80,27 @@ public class ItemRepository : IItemRepository
         parameters.Add("@fornecedorId", item.FornecedorId);
         parameters.Add("@descricao", item.Descricao);
 
-        string sql = @"UPDATE Item
-                    SET nome = @nome
-                    AND fornecedorId = @fornecedorId
-                    AND descricao = @descricao
-                    WHERE id= @id";
-
-        var affectedRows = await _db.ExecuteAsync(sql, parameters);
+        string sql = @"
+            UPDATE Item
+            SET nome = @nome,
+                fornecedorId = @fornecedorId,
+                descricao = @descricao
+            WHERE id = @id;";
+        using var db = _factory.CreateConnection();
+        var affectedRows = await db.ExecuteAsync(sql, parameters);
 
         return affectedRows > 0;
     }
 
     public async Task<bool> DeleteItem(int id)
     {
-        var sql = "DELETE FROM Item WHERE Id = @Id;";
+        using var db = _factory.CreateConnection();
 
-        var affectedRows = await _db.ExecuteAsync(sql, new { Id = id });
+        // Remover saldo do estoque associado
+        await db.ExecuteAsync("DELETE FROM estoque WHERE itemId = @Id;", new { Id = id });
+
+        var sql = "DELETE FROM Item WHERE Id = @Id;";
+        var affectedRows = await db.ExecuteAsync(sql, new { Id = id });
 
         return affectedRows > 0;
     }

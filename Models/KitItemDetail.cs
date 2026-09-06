@@ -1,5 +1,3 @@
-using System;
-
 namespace ShelfApi.Models;
 
 public class KitItemDetail
