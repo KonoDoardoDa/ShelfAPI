@@ -1,4 +1,6 @@
 using ShelfApi.Models;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace ShelfApi.Repositories;
 
@@ -9,4 +11,5 @@ public interface IItemRepository
     Task<int> CreateItem(Item item);
     Task<bool> UpdateItem(Item item);
     Task<bool> DeleteItem(int id);
+    Task<bool> ToggleStatus(int id);
 }

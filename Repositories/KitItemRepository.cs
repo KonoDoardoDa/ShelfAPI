@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Dapper;
+using ShelfApi.Exceptions;
+using ShelfApi.Infrastructure;
 using ShelfApi.Models;
 using System.Data;
-using ShelfApi.Infrastructure;
-
+using MySqlConnector;
 
 namespace ShelfApi.Repositories;
 
@@ -56,8 +57,15 @@ public class KitItemRepository : IKitItemRepository
             VALUES (@kitId, @itemId, @quantidade, @isPainel);";
 
         using var db = _factory.CreateConnection();
-        var affectedRows = await db.ExecuteAsync(sql, parameters);
-        return affectedRows > 0;
+        try
+        {
+            var affectedRows = await db.ExecuteAsync(sql, parameters);
+            return affectedRows > 0;
+        }
+        catch (MySqlException ex) when (ex.Number == 1062)
+        {
+            throw new DuplicateKitItemException(kitItem.KitId, kitItem.ItemId);
+        }
     }
 
     public async Task<bool> UpdateKitItem(KitItem kitItem)

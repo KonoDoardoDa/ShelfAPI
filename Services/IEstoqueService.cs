@@ -10,4 +10,5 @@ public interface IEstoqueService
     Task<IEnumerable<EstoqueSaldoDto>> GetAllSaldosAsync();
     Task<int> MovimentarEstoqueAsync(MovimentacaoEstoqueDto dto, int? usuarioId = null, string? usuarioNome = null);
     Task<IEnumerable<MovimentacaoEstoqueDetalheDto>> GetHistoricoAsync(int? itemId = null, int limit = 100);
+    Task<ImportarLoteResultadoDto> ImportarLoteAsync(ImportarLoteRequestDto dto, int? usuarioId = null, string? usuarioNome = null);
 }

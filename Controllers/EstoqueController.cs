@@ -69,6 +69,7 @@ public class EstoqueController : ControllerBase
                 tipo = dto.Tipo,
                 quantidade = dto.Quantidade,
                 motivo = dto.Motivo,
+                notaFiscal = dto.NotaFiscal,
                 usuarioNome,
                 message = $"Estoque atualizado com sucesso. Novo saldo: {novoSaldo} unidades."
             });
@@ -98,6 +99,42 @@ public class EstoqueController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = $"Erro ao obter histórico de movimentações: {ex.Message}" });
+        }
+    }
+
+    [HttpPost("ImportarLote")]
+    public async Task<IActionResult> ImportarLote([FromBody] ImportarLoteRequestDto dto)
+    {
+        if (dto == null || dto.Itens == null || dto.Itens.Count == 0)
+        {
+            return BadRequest(new { message = "Nenhum item informado para importação." });
+        }
+
+        try
+        {
+            int? usuarioId = null;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+                              User.FindFirst("userId")?.Value;
+            if (int.TryParse(userIdClaim, out var parsedId))
+            {
+                usuarioId = parsedId;
+            }
+
+            var usuarioNome = User.FindFirst(ClaimTypes.Name)?.Value ??
+                              User.Identity?.Name ??
+                              dto.UsuarioNome ??
+                              "Sistema";
+
+            var resultado = await _estoqueService.ImportarLoteAsync(dto, usuarioId, usuarioNome);
+            return Ok(resultado);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"Erro ao importar lote de itens: {ex.Message}" });
         }
     }
 }

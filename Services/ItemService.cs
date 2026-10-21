@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using ShelfApi.Models;
 using ShelfApi.Repositories;
 using ShelfApi.Services;
@@ -8,8 +11,9 @@ namespace ShelfApi.Services;
 
 public class ItemService : IItemService
 {
-    private IItemRepository _itemRepository;
-    private IFornecedorRepository _fornecedorRepository;
+    private readonly IItemRepository _itemRepository;
+    private readonly IFornecedorRepository _fornecedorRepository;
+
     public ItemService(IItemRepository itemRepository, IFornecedorRepository fornecedorRepository)
     {
         _itemRepository = itemRepository;
@@ -38,7 +42,7 @@ public class ItemService : IItemService
 
         if (!providers.Any(p => p.Id == item.FornecedorId))
         {
-            throw new InexistentProviderException($"N„o h· nenhum fornecedor com este id: {item.FornecedorId}.");
+            throw new InexistentProviderException($"N√£o h√° nenhum fornecedor com este id: {item.FornecedorId}.");
         }
 
         return await _itemRepository.CreateItem(item);
@@ -62,5 +66,10 @@ public class ItemService : IItemService
         {
             throw new ItemNotFoundException($"Nenhum item encontrado para o seguinte id: {id}");
         }
+    }
+
+    public async Task<bool> ToggleStatusAsync(int id)
+    {
+        return await _itemRepository.ToggleStatus(id);
     }
 }

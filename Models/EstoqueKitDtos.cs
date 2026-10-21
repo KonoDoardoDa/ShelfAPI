@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace ShelfApi.Models;
 
@@ -23,6 +24,8 @@ public class KitItemDisponibilidadeDto
 {
     public int ItemId { get; set; }
     public string NomeItem { get; set; } = string.Empty;
+    public int? FornecedorId { get; set; }
+    public string NomeFornecedor { get; set; } = "Sem Fornecedor";
     public int QuantidadeNecessaria { get; set; }
     public int SaldoEstoqueItem { get; set; }
     public bool IsPainel { get; set; }
@@ -31,8 +34,14 @@ public class KitItemDisponibilidadeDto
 
 public class MontarKitRequestDto
 {
+    [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "O ID do kit deve ser válido.")]
     public int KitId { get; set; }
+
+    [Required]
+    [Range(1, 1_000_000, ErrorMessage = "A quantidade a ser montada deve ser entre 1 e 1.000.000 unidades.")]
     public int Quantidade { get; set; }
+
     public string? Motivo { get; set; }
     public int? UsuarioId { get; set; }
     public string? UsuarioNome { get; set; }
@@ -40,8 +49,14 @@ public class MontarKitRequestDto
 
 public class DesmontarKitRequestDto
 {
+    [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "O ID do kit deve ser válido.")]
     public int KitId { get; set; }
+
+    [Required]
+    [Range(1, 1_000_000, ErrorMessage = "A quantidade a ser desmontada deve ser entre 1 e 1.000.000 unidades.")]
     public int Quantidade { get; set; }
+
     public string? Motivo { get; set; }
     public int? UsuarioId { get; set; }
     public string? UsuarioNome { get; set; }
@@ -49,9 +64,17 @@ public class DesmontarKitRequestDto
 
 public class MovimentarKitManualDto
 {
+    [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "O ID do kit deve ser válido.")]
     public int KitId { get; set; }
+
+    [Required]
     public string Tipo { get; set; } = "Entrada"; // "Entrada" ou "Saida"
+
+    [Required]
+    [Range(1, 1_000_000, ErrorMessage = "A quantidade a ser movimentada deve ser entre 1 e 1.000.000 unidades.")]
     public int Quantidade { get; set; }
+
     public string? Motivo { get; set; }
     public int? UsuarioId { get; set; }
     public string? UsuarioNome { get; set; }
@@ -82,7 +105,12 @@ public class ResultadoOperacaoKitDto
 
 public class ItemSimulacaoInputDto
 {
+    [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "O ID do kit deve ser válido.")]
     public int KitId { get; set; }
+
+    [Required]
+    [Range(1, 1_000_000, ErrorMessage = "A quantidade para simulação deve ser entre 1 e 1.000.000 unidades.")]
     public int Quantidade { get; set; }
 }
 
@@ -100,6 +128,8 @@ public class ItemSimulacaoResultadoDto
 {
     public int ItemId { get; set; }
     public string NomeItem { get; set; } = string.Empty;
+    public int? FornecedorId { get; set; }
+    public string NomeFornecedor { get; set; } = "Sem Fornecedor";
     public int QuantidadeTotalNecessaria { get; set; }
     public int SaldoEstoqueItem { get; set; }
     public int SaldoAposMontagem { get; set; }

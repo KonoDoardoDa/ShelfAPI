@@ -1,11 +1,15 @@
-﻿using ShelfApi.Repositories;
+using ShelfApi.Repositories;
 using ShelfApi.Models;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace ShelfApi.Services
 {
     public class FornecedorService : IFornecedorService
     {
         private readonly IFornecedorRepository _fornecedorRepository;
+
         public FornecedorService(IFornecedorRepository fornecedorRepository)
         {
             _fornecedorRepository = fornecedorRepository;
@@ -21,10 +25,12 @@ namespace ShelfApi.Services
             var fornecedores = await _fornecedorRepository.GetAllAsync();
             return fornecedores.FirstOrDefault(f => f.Id == id);
         }
+
         public async Task<int> CreateFornecedor(Fornecedor fornecedor)
         {
             return await _fornecedorRepository.CreateFornecedor(fornecedor);
         }
+
         public async Task<int> UpdateFornecedorAsync(Fornecedor fornecedor)
         {
             return await _fornecedorRepository.UpdateFornecedor(fornecedor);
@@ -33,6 +39,11 @@ namespace ShelfApi.Services
         public async Task DeleteFornecedorAsync(int id)
         {
             await _fornecedorRepository.DeleteFornecedor(id);
+        }
+
+        public async Task<bool> ToggleStatusAsync(int id)
+        {
+            return await _fornecedorRepository.ToggleStatus(id);
         }
     }
 }

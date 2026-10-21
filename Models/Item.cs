@@ -8,5 +8,6 @@ public class Item
     public string? Nome { get; set; }
     public int FornecedorId { get; set; }
     public string? Descricao { get; set; }
+    public bool Ativo { get; set; } = true;
     public int QuantidadeEstoque { get; set; } = 0;
 }

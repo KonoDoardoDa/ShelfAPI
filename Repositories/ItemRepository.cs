@@ -1,6 +1,9 @@
 using Dapper;
 using ShelfApi.Infrastructure;
 using ShelfApi.Models;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace ShelfApi.Repositories;
 
@@ -21,9 +24,11 @@ public class ItemRepository : IItemRepository
                 i.Nome, 
                 i.FornecedorId, 
                 i.Descricao, 
+                i.Ativo,
                 COALESCE(e.quantidade, 0) AS QuantidadeEstoque 
             FROM Item i 
-            LEFT JOIN estoque e ON i.Id = e.itemId;";
+            LEFT JOIN estoque e ON i.Id = e.itemId
+            ORDER BY i.Id ASC;";
         using var db = _factory.CreateConnection();
         return await db.QueryAsync<Item>(sql);
     }
@@ -36,6 +41,7 @@ public class ItemRepository : IItemRepository
                 i.Nome, 
                 i.FornecedorId, 
                 i.Descricao, 
+                i.Ativo,
                 COALESCE(e.quantidade, 0) AS QuantidadeEstoque 
             FROM Item i 
             LEFT JOIN estoque e ON i.Id = e.itemId 
@@ -50,10 +56,11 @@ public class ItemRepository : IItemRepository
         parameters.Add("@nome", item.Nome);
         parameters.Add("@fornecedorId", item.FornecedorId);
         parameters.Add("@descricao", item.Descricao);
+        parameters.Add("@ativo", item.Ativo);
 
         string sql = @"
-            INSERT INTO Item (nome, FornecedorId, Descricao)
-            VALUES (@nome, @fornecedorId, @descricao);
+            INSERT INTO Item (nome, FornecedorId, Descricao, Ativo)
+            VALUES (@nome, @fornecedorId, @descricao, @ativo);
             SELECT LAST_INSERT_ID();";
         using var db = _factory.CreateConnection();
 
@@ -79,12 +86,14 @@ public class ItemRepository : IItemRepository
         parameters.Add("@nome", item.Nome);
         parameters.Add("@fornecedorId", item.FornecedorId);
         parameters.Add("@descricao", item.Descricao);
+        parameters.Add("@ativo", item.Ativo);
 
         string sql = @"
             UPDATE Item
             SET nome = @nome,
                 fornecedorId = @fornecedorId,
-                descricao = @descricao
+                descricao = @descricao,
+                Ativo = @ativo
             WHERE id = @id;";
         using var db = _factory.CreateConnection();
         var affectedRows = await db.ExecuteAsync(sql, parameters);
@@ -96,6 +105,18 @@ public class ItemRepository : IItemRepository
     {
         using var db = _factory.CreateConnection();
 
+        // Verificar histórico de movimentações ou vinculação com kits
+        const string checkSql = @"
+            SELECT 
+                (SELECT COUNT(1) FROM movimentacao_estoque WHERE itemId = @id) +
+                (SELECT COUNT(1) FROM KitItem WHERE ItemId = @id) AS Total;";
+        var totalLinks = await db.ExecuteScalarAsync<int>(checkSql, new { id });
+
+        if (totalLinks > 0)
+        {
+            throw new InvalidOperationException($"Não é possível excluir o item #{id} pois ele possui histórico de movimentação ou está vinculado a kits. Utilize a opção Inativar.");
+        }
+
         // Remover saldo do estoque associado
         await db.ExecuteAsync("DELETE FROM estoque WHERE itemId = @Id;", new { Id = id });
 
@@ -103,5 +124,12 @@ public class ItemRepository : IItemRepository
         var affectedRows = await db.ExecuteAsync(sql, new { Id = id });
 
         return affectedRows > 0;
+    }
+
+    public async Task<bool> ToggleStatus(int id)
+    {
+        const string sql = "UPDATE Item SET Ativo = NOT Ativo WHERE Id = @id;";
+        using var db = _factory.CreateConnection();
+        return await db.ExecuteAsync(sql, new { id }) > 0;
     }
 }

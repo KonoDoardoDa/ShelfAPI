@@ -53,11 +53,47 @@ namespace ShelfApi.Controllers
         {
             if (kitItem is null)
             {
-                return BadRequest();
+                return BadRequest(new { message = "Dados do item não informados." });
             }
 
-            await _kitItemService.CreateKitItemAsync(kitItem);
-            return CreatedAtAction(nameof(GetById), new { kitId = kitItem.KitId, itemId = kitItem.ItemId }, kitItem);
+            if (kitItem.KitId <= 0 || kitItem.ItemId <= 0)
+            {
+                return BadRequest(new { message = "Identificador do kit ou do item inválido." });
+            }
+
+            const int maxQuantidade = 1_000_000;
+            if (kitItem.Quantidade <= 0 || kitItem.Quantidade > maxQuantidade)
+            {
+                return BadRequest(new { message = $"A quantidade do item no kit deve ser entre 1 e {maxQuantidade:N0} unidades." });
+            }
+
+            // Verificar se o item já existe na composição do kit
+            var existingItem = await _kitItemService.GetKitItemAsync(kitItem.KitId, kitItem.ItemId);
+            if (existingItem != null)
+            {
+                return Conflict(new
+                {
+                    message = $"Este item já existe na composição deste kit (Quantidade atual: {existingItem.Quantidade} un). É preferível incrementar a quantidade do item existente em vez de adicioná-lo novamente."
+                });
+            }
+
+            try
+            {
+                await _kitItemService.CreateKitItemAsync(kitItem);
+                return CreatedAtAction(nameof(GetById), new { kitId = kitItem.KitId, itemId = kitItem.ItemId }, kitItem);
+            }
+            catch (DuplicateKitItemException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (System.ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new { message = $"Erro interno ao adicionar item ao kit: {ex.Message}" });
+            }
         }
 
         [HttpPut]
@@ -66,7 +102,13 @@ namespace ShelfApi.Controllers
         {
             if (kitItem is null || kitItem.KitId != kitId || kitItem.ItemId != itemId)
             {
-                return BadRequest();
+                return BadRequest(new { message = "Dados do item inconsistentes com a requisição." });
+            }
+
+            const int maxQuantidade = 1_000_000;
+            if (kitItem.Quantidade <= 0 || kitItem.Quantidade > maxQuantidade)
+            {
+                return BadRequest(new { message = $"A quantidade do item no kit deve ser entre 1 e {maxQuantidade:N0} unidades." });
             }
 
             try
@@ -76,7 +118,15 @@ namespace ShelfApi.Controllers
             }
             catch (KitItemNotFoundException)
             {
-                return NotFound();
+                return NotFound(new { message = $"Item #{itemId} não encontrado na composição do kit #{kitId}." });
+            }
+            catch (System.ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new { message = $"Erro interno ao atualizar item do kit: {ex.Message}" });
             }
         }
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using ShelfApi.Exceptions;
@@ -49,6 +50,7 @@ namespace ShelfApi.Controllers
             }
 
             var createdId = await _fornecedorService.CreateFornecedor(fornecedor);
+            fornecedor.Id = createdId;
             return CreatedAtAction(nameof(GetById), new { id = createdId }, fornecedor);
         }
 
@@ -77,6 +79,18 @@ namespace ShelfApi.Controllers
             }
         }
 
+        [HttpPatch]
+        [Route("ToggleStatus/{id}")]
+        public async Task<ActionResult> ToggleStatus(int id)
+        {
+            var success = await _fornecedorService.ToggleStatusAsync(id);
+            if (!success)
+            {
+                return NotFound();
+            }
+            return Ok(new { message = "Status do fornecedor alterado com sucesso." });
+        }
+
         [HttpDelete]
         [Route("Delete")]
         public async Task<ActionResult> Delete(int id)
@@ -86,9 +100,17 @@ namespace ShelfApi.Controllers
                 await _fornecedorService.DeleteFornecedorAsync(id);
                 return NoContent();
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (InexistentProviderException)
             {
                 return NotFound();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = $"Erro ao excluir fornecedor: {ex.Message}" });
             }
         }
     }

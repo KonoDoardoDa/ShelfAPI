@@ -16,7 +16,7 @@ public class KitRepository : IKitRepository
 
     public async Task<IEnumerable<Kit>> GetAllAsync()
     {
-        const string sql = @"SELECT Id, Nome FROM Kit;";
+        const string sql = @"SELECT Id, Nome, Ativo FROM Kit ORDER BY Id ASC;";
 
         using var db = _factory.CreateConnection();
         return await db.QueryAsync<Kit>(sql);
@@ -24,7 +24,7 @@ public class KitRepository : IKitRepository
 
     public async Task<Kit?> GetKitByIdAsync(int id)
     {
-        const string sql = @"SELECT Id, Nome
+        const string sql = @"SELECT Id, Nome, Ativo
                              FROM Kit
                              WHERE Id = @id;";
 
@@ -36,10 +36,11 @@ public class KitRepository : IKitRepository
     {
         var parameters = new DynamicParameters();
         parameters.Add("@nome", kit.Nome);
+        parameters.Add("@ativo", kit.Ativo);
 
         const string sql = @"
-            INSERT INTO Kit (Nome)
-            VALUES (@nome);
+            INSERT INTO Kit (Nome, Ativo)
+            VALUES (@nome, @ativo);
             SELECT LAST_INSERT_ID();";
 
         using var db = _factory.CreateConnection();
@@ -52,10 +53,12 @@ public class KitRepository : IKitRepository
         var parameters = new DynamicParameters();
         parameters.Add("@id", kit.Id);
         parameters.Add("@nome", kit.Nome);
+        parameters.Add("@ativo", kit.Ativo);
 
         const string sql = @"
             UPDATE Kit
-            SET Nome = @nome
+            SET Nome = @nome,
+                Ativo = @ativo
             WHERE Id = @id;";
 
         using var db = _factory.CreateConnection();
@@ -65,18 +68,45 @@ public class KitRepository : IKitRepository
 
     public async Task<bool> DeleteKit(int id)
     {
-        const string sql = "DELETE FROM Kit WHERE Id = @Id;";
-
         using var db = _factory.CreateConnection();
+
+        // Verificar se existem vínculos na composição, histórico de movimentação, instalações em softwares ou saldo físico
+        const string checkSql = @"
+            SELECT 
+                (SELECT COUNT(1) FROM KitItem WHERE KitId = @id) +
+                (SELECT COUNT(1) FROM movimentacao_kit WHERE kitId = @id) +
+                (SELECT COUNT(1) FROM Software WHERE KitId = @id) +
+                (SELECT COALESCE(SUM(quantidade), 0) FROM estoque_kit WHERE kitId = @id) AS Total;";
+        var totalLinks = await db.ExecuteScalarAsync<int>(checkSql, new { id });
+
+        if (totalLinks > 0)
+        {
+            throw new InvalidOperationException($"Não é possível excluir o kit #{id} pois ele possui itens em sua composição, histórico de montagens ou instalações vinculadas. Utilize a opção Inativar.");
+        }
+
+        // Se for kit virgem (sem histórico e sem saldo), remove itens da composição e saldo zerado
+        await db.ExecuteAsync("DELETE FROM KitItem WHERE KitId = @id;", new { id });
+        await db.ExecuteAsync("DELETE FROM estoque_kit WHERE kitId = @id;", new { id });
+
+        const string sql = "DELETE FROM Kit WHERE Id = @Id;";
         var affectedRows = await db.ExecuteAsync(sql, new { Id = id });
         return affectedRows > 0;
     }
+
+    public async Task<bool> ToggleStatus(int id)
+    {
+        const string sql = "UPDATE Kit SET Ativo = NOT Ativo WHERE Id = @id;";
+        using var db = _factory.CreateConnection();
+        return await db.ExecuteAsync(sql, new { id }) > 0;
+    }
+
     public async Task<KitDetails?> GetKitWithItemsAsync(int id)
     {
         const string sql = @"
             SELECT
                 k.Id AS Id,
                 k.Nome AS Nome,
+                k.Ativo AS Ativo,
                 i.Id AS ItemId,
                 i.Nome AS ItemNome,
                 ki.Quantidade AS Quantidade,

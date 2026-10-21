@@ -11,5 +11,6 @@ public interface IKitService
     Task<int> CreateKit(Kit kit);
     Task<int> UpdateKitAsync(Kit kit);
     Task DeleteKitAsync(int id);
+    Task<bool> ToggleStatusAsync(int id);
     Task<KitDetails?> GetKitWithItemsAsync(int id);
 }

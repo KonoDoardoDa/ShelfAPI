@@ -50,6 +50,11 @@ public class KitService : IKitService
         }
     }
 
+    public async Task<bool> ToggleStatusAsync(int id)
+    {
+        return await _kitRepository.ToggleStatus(id);
+    }
+
     public async Task<KitDetails?> GetKitWithItemsAsync(int id)
     {
         return await _kitRepository.GetKitWithItemsAsync(id);

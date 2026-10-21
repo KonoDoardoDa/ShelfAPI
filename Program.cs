@@ -1,6 +1,8 @@
 using System;
+using System.Linq;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using ShelfApi.Infrastructure;
 using ShelfApi.Repositories;
@@ -16,9 +18,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(_ => true)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -75,7 +78,38 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(e => e.Value?.Errors.Count > 0)
+                .Select(e =>
+                {
+                    var firstError = e.Value!.Errors.First();
+                    var errorMsg = firstError.ErrorMessage;
+                    if (string.IsNullOrWhiteSpace(errorMsg) && firstError.Exception != null)
+                    {
+                        errorMsg = firstError.Exception.Message;
+                    }
+
+                    if (errorMsg.Contains("could not be converted", StringComparison.OrdinalIgnoreCase) ||
+                        errorMsg.Contains("is not valid", StringComparison.OrdinalIgnoreCase) ||
+                        errorMsg.Contains("JSON value", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var fieldClean = e.Key.TrimStart('$', '.');
+                        return $"O valor fornecido para '{fieldClean}' é inválido ou excede o limite numérico permitido.";
+                    }
+
+                    return errorMsg;
+                })
+                .ToList();
+
+            var message = errors.Count == 1 ? errors[0] : string.Join(" ", errors);
+            return new BadRequestObjectResult(new { message });
+        };
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

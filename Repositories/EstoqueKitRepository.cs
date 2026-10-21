@@ -40,11 +40,14 @@ public class EstoqueKitRepository : IEstoqueKitRepository
                 ki.KitId,
                 ki.ItemId,
                 i.Nome AS NomeItem,
+                i.FornecedorId,
+                COALESCE(f.Nome, 'Sem Fornecedor') AS NomeFornecedor,
                 ki.Quantidade AS QuantidadeNecessaria,
                 ki.IsPainel,
                 COALESCE(e.quantidade, 0) AS SaldoEstoqueItem
             FROM kititem ki
             INNER JOIN item i ON ki.ItemId = i.Id
+            LEFT JOIN fornecedor f ON i.FornecedorId = f.Id
             LEFT JOIN estoque e ON ki.ItemId = e.itemId;";
 
         var itensPorKit = (await db.QueryAsync<dynamic>(sqlItens))
@@ -60,6 +63,8 @@ public class EstoqueKitRepository : IEstoqueKitRepository
                 {
                     ItemId = (int)it.ItemId,
                     NomeItem = (string)it.NomeItem,
+                    FornecedorId = it.FornecedorId != null ? (int?)it.FornecedorId : null,
+                    NomeFornecedor = (string)it.NomeFornecedor ?? "Sem Fornecedor",
                     QuantidadeNecessaria = (int)it.QuantidadeNecessaria,
                     SaldoEstoqueItem = (int)it.SaldoEstoqueItem,
                     IsPainel = Convert.ToBoolean(it.IsPainel)
@@ -98,9 +103,10 @@ public class EstoqueKitRepository : IEstoqueKitRepository
         int? usuarioId,
         string usuarioNome)
     {
-        if (quantidade <= 0)
+        const int maxQuantidadeOperacao = 1_000_000;
+        if (quantidade <= 0 || quantidade > maxQuantidadeOperacao)
         {
-            throw new ArgumentException("A quantidade a ser montada deve ser maior que zero.", nameof(quantidade));
+            throw new ArgumentException($"A quantidade a ser montada deve ser entre 1 e {maxQuantidadeOperacao:N0} unidades.", nameof(quantidade));
         }
 
         using var db = _factory.CreateConnection();
@@ -143,7 +149,12 @@ public class EstoqueKitRepository : IEstoqueKitRepository
             var itensFaltantes = new List<string>();
             foreach (var it in itens)
             {
-                var totalNecessario = it.QuantidadeNecessaria * quantidade;
+                long totalNecessarioLong = (long)it.QuantidadeNecessaria * (long)quantidade;
+                if (totalNecessarioLong > int.MaxValue)
+                {
+                    throw new InvalidOperationException($"A quantidade necessária calculada para '{it.NomeItem}' excede a capacidade suportada.");
+                }
+                var totalNecessario = (int)totalNecessarioLong;
                 if (it.SaldoEstoqueItem < totalNecessario)
                 {
                     itensFaltantes.Add($"{it.NomeItem} (Saldo atual: {it.SaldoEstoqueItem} un, Necessário: {totalNecessario} un)");
@@ -192,7 +203,13 @@ public class EstoqueKitRepository : IEstoqueKitRepository
             const string sqlSaldoKit = "SELECT quantidade FROM estoque_kit WHERE kitId = @kitId;";
             var saldoAtualKitNullable = await db.QueryFirstOrDefaultAsync<int?>(sqlSaldoKit, new { kitId }, tx);
             var saldoAnteriorKit = saldoAtualKitNullable ?? 0;
-            var saldoPosteriorKit = saldoAnteriorKit + quantidade;
+            long saldoPosteriorKitLong = (long)saldoAnteriorKit + (long)quantidade;
+            const long maxSaldoKit = 100_000_000;
+            if (saldoPosteriorKitLong > maxSaldoKit)
+            {
+                throw new InvalidOperationException($"O saldo resultante de kits excederia o limite máximo permitido ({maxSaldoKit:N0} unidades).");
+            }
+            var saldoPosteriorKit = (int)saldoPosteriorKitLong;
 
             if (saldoAtualKitNullable == null)
             {
@@ -247,9 +264,10 @@ public class EstoqueKitRepository : IEstoqueKitRepository
         int? usuarioId,
         string usuarioNome)
     {
-        if (quantidade <= 0)
+        const int maxQuantidadeOperacao = 1_000_000;
+        if (quantidade <= 0 || quantidade > maxQuantidadeOperacao)
         {
-            throw new ArgumentException("A quantidade a ser desmontada deve ser maior que zero.", nameof(quantidade));
+            throw new ArgumentException($"A quantidade a ser desmontada deve ser entre 1 e {maxQuantidadeOperacao:N0} unidades.", nameof(quantidade));
         }
 
         using var db = _factory.CreateConnection();
@@ -327,11 +345,23 @@ public class EstoqueKitRepository : IEstoqueKitRepository
             }, tx);
 
             // 5. Devolver peças avulsas para o estoque de cada item
+            const long maxSaldoEstoque = 100_000_000;
             foreach (var it in itens)
             {
-                var totalDevolver = it.QuantidadeNecessaria * quantidade;
+                long totalDevolverLong = (long)it.QuantidadeNecessaria * (long)quantidade;
+                if (totalDevolverLong > int.MaxValue)
+                {
+                    throw new InvalidOperationException($"A quantidade a ser devolvida para '{it.NomeItem}' excede a capacidade do sistema.");
+                }
+                var totalDevolver = (int)totalDevolverLong;
+
                 var saldoAnteriorItem = it.SaldoEstoqueItem;
-                var saldoPosteriorItem = saldoAnteriorItem + totalDevolver;
+                long saldoPosteriorItemLong = (long)saldoAnteriorItem + totalDevolverLong;
+                if (saldoPosteriorItemLong > maxSaldoEstoque)
+                {
+                    throw new InvalidOperationException($"A devolução de peças resultaria em um saldo de {saldoPosteriorItemLong:N0} unidades para '{it.NomeItem}', excedendo o limite máximo ({maxSaldoEstoque:N0}).");
+                }
+                var saldoPosteriorItem = (int)saldoPosteriorItemLong;
 
                 // Se item já existe em estoque atualiza, senão insere
                 const string sqlCheckItem = "SELECT COUNT(1) FROM estoque WHERE itemId = @itemId;";
@@ -391,9 +421,10 @@ public class EstoqueKitRepository : IEstoqueKitRepository
         int? usuarioId,
         string usuarioNome)
     {
-        if (quantidade <= 0)
+        const int maxQuantidadeOperacao = 1_000_000;
+        if (quantidade <= 0 || quantidade > maxQuantidadeOperacao)
         {
-            throw new ArgumentException("A quantidade deve ser maior que zero.", nameof(quantidade));
+            throw new ArgumentException($"A quantidade deve ser entre 1 e {maxQuantidadeOperacao:N0} unidades.", nameof(quantidade));
         }
 
         var isEntrada = tipo.Equals("Entrada", StringComparison.OrdinalIgnoreCase);
@@ -424,13 +455,21 @@ public class EstoqueKitRepository : IEstoqueKitRepository
             int saldoAnterior = (int)kitInfo.SaldoAtual;
             bool hasRegistro = kitInfo.HasRegistro != null;
 
-            int saldoPosterior = isEntrada ? saldoAnterior + quantidade : saldoAnterior - quantidade;
+            long saldoPosteriorLong = isEntrada ? (long)saldoAnterior + (long)quantidade : (long)saldoAnterior - (long)quantidade;
 
-            if (saldoPosterior < 0)
+            if (saldoPosteriorLong < 0)
             {
                 throw new InvalidOperationException(
                     $"Saldo insuficiente de kits em estoque. Saldo atual: {saldoAnterior} un, solicitado: {quantidade} un.");
             }
+
+            const long maxSaldoKit = 100_000_000;
+            if (saldoPosteriorLong > maxSaldoKit)
+            {
+                throw new InvalidOperationException($"O saldo resultante de kits excederia o limite máximo permitido ({maxSaldoKit:N0} unidades).");
+            }
+
+            int saldoPosterior = (int)saldoPosteriorLong;
 
             if (!hasRegistro)
             {
@@ -534,12 +573,15 @@ public class EstoqueKitRepository : IEstoqueKitRepository
                 k.Nome AS NomeKit,
                 ki.ItemId,
                 i.Nome AS NomeItem,
+                i.FornecedorId,
+                COALESCE(f.Nome, 'Sem Fornecedor') AS NomeFornecedor,
                 ki.Quantidade AS QuantidadePorKit,
                 ki.IsPainel,
                 COALESCE(e.quantidade, 0) AS SaldoEstoqueItem
             FROM kit k
             INNER JOIN kititem ki ON k.Id = ki.KitId
             INNER JOIN item i ON ki.ItemId = i.Id
+            LEFT JOIN fornecedor f ON i.FornecedorId = f.Id
             LEFT JOIN estoque e ON ki.ItemId = e.itemId
             WHERE k.Id IN @kitIds;";
 
@@ -555,6 +597,8 @@ public class EstoqueKitRepository : IEstoqueKitRepository
             {
                 int itemId = (int)row.ItemId;
                 string nomeItem = (string)row.NomeItem;
+                int? fornecedorId = row.FornecedorId != null ? (int?)row.FornecedorId : null;
+                string nomeFornecedor = (string)row.NomeFornecedor ?? "Sem Fornecedor";
                 int qtdPorKit = (int)row.QuantidadePorKit;
                 bool isPainel = Convert.ToBoolean(row.IsPainel);
                 int saldoEstoque = (int)row.SaldoEstoqueItem;
@@ -567,6 +611,8 @@ public class EstoqueKitRepository : IEstoqueKitRepository
                     {
                         ItemId = itemId,
                         NomeItem = nomeItem,
+                        FornecedorId = fornecedorId,
+                        NomeFornecedor = nomeFornecedor,
                         SaldoEstoqueItem = saldoEstoque,
                         IsPainel = isPainel,
                         QuantidadeTotalNecessaria = 0,

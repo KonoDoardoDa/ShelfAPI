@@ -32,9 +32,10 @@ public class EstoqueService : IEstoqueService
             throw new ArgumentException("ID do item inválido.");
         }
 
-        if (dto.Quantidade <= 0)
+        const int maxQuantidade = 1_000_000;
+        if (dto.Quantidade <= 0 || dto.Quantidade > maxQuantidade)
         {
-            throw new ArgumentException("A quantidade movimentada deve ser maior que zero.");
+            throw new ArgumentException($"A quantidade movimentada deve ser maior que zero e não pode exceder {maxQuantidade:N0} unidades por operação.");
         }
 
         var isEntrada = string.Equals(dto.Tipo, "Entrada", StringComparison.OrdinalIgnoreCase);
@@ -61,7 +62,8 @@ public class EstoqueService : IEstoqueService
             dto.Quantidade,
             dto.Motivo,
             idFinal,
-            nomeFinal
+            nomeFinal,
+            dto.NotaFiscal
         );
     }
 
@@ -71,5 +73,15 @@ public class EstoqueService : IEstoqueService
         if (limit > 500) limit = 500;
 
         return await _estoqueRepository.GetHistoricoAsync(itemId, limit);
+    }
+
+    public async Task<ImportarLoteResultadoDto> ImportarLoteAsync(ImportarLoteRequestDto dto, int? usuarioId = null, string? usuarioNome = null)
+    {
+        if (dto == null || dto.Itens == null || dto.Itens.Count == 0)
+        {
+            throw new ArgumentException("A lista de itens para importação não pode estar vazia.");
+        }
+
+        return await _estoqueRepository.ImportarLoteAsync(dto, usuarioId, usuarioNome);
     }
 }

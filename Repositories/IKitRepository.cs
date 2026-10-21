@@ -11,5 +11,6 @@ public interface IKitRepository
     Task<int> CreateKit(Kit kit);
     Task<bool> UpdateKit(Kit kit);
     Task<bool> DeleteKit(int id);
+    Task<bool> ToggleStatus(int id);
     Task<KitDetails?> GetKitWithItemsAsync(int id);
 }

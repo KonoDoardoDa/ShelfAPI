@@ -1,4 +1,4 @@
-﻿using ShelfApi.Models;
+using ShelfApi.Models;
 
 namespace ShelfApi.Services
 {
@@ -9,5 +9,6 @@ namespace ShelfApi.Services
         Task<int> CreateFornecedor(Fornecedor fornecedor);
         Task<int> UpdateFornecedorAsync(Fornecedor fornecedor);
         Task DeleteFornecedorAsync(int id);
+        Task<bool> ToggleStatusAsync(int id);
     }
 }

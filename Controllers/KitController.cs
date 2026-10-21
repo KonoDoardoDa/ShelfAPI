@@ -49,6 +49,7 @@ namespace ShelfApi.Controllers
             }
 
             var createdId = await _kitService.CreateKit(kit);
+            kit.Id = createdId;
             return CreatedAtAction(nameof(GetById), new { id = createdId }, kit);
         }
 
@@ -72,6 +73,18 @@ namespace ShelfApi.Controllers
             }
         }
 
+        [HttpPatch]
+        [Route("ToggleStatus/{id:int}")]
+        public async Task<IActionResult> ToggleStatus(int id)
+        {
+            var success = await _kitService.ToggleStatusAsync(id);
+            if (!success)
+            {
+                return NotFound(new { message = "Kit não encontrado." });
+            }
+            return Ok(new { message = "Status do kit alterado com sucesso." });
+        }
+
         [HttpDelete]
         [Route("Delete")]
         public async Task<ActionResult> Delete(int id)
@@ -81,9 +94,17 @@ namespace ShelfApi.Controllers
                 await _kitService.DeleteKitAsync(id);
                 return NoContent();
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (KitNotFoundException)
             {
                 return NotFound();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = $"Erro ao excluir kit: {ex.Message}" });
             }
         }
 

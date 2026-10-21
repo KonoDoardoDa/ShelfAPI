@@ -32,15 +32,27 @@ public class KitItemService : IKitItemService
 
     public async Task CreateKitItemAsync(KitItem kitItem)
     {
+        const int maxQuantidade = 1_000_000;
+        if (kitItem.Quantidade <= 0 || kitItem.Quantidade > maxQuantidade)
+        {
+            throw new System.ArgumentException($"A quantidade do item no kit deve ser entre 1 e {maxQuantidade:N0} unidades.");
+        }
+
         var created = await _kitItemRepository.CreateKitItem(kitItem);
         if (!created)
         {
-            throw new Exception("Failed to create kit item.");
+            throw new Exception("Falha ao adicionar item ao kit.");
         }
     }
 
     public async Task UpdateKitItemAsync(KitItem kitItem)
     {
+        const int maxQuantidade = 1_000_000;
+        if (kitItem.Quantidade <= 0 || kitItem.Quantidade > maxQuantidade)
+        {
+            throw new System.ArgumentException($"A quantidade do item no kit deve ser entre 1 e {maxQuantidade:N0} unidades.");
+        }
+
         var updated = await _kitItemRepository.UpdateKitItem(kitItem);
         if (!updated)
         {

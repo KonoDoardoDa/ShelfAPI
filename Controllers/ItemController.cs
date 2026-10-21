@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using ShelfApi.Exceptions;
 using ShelfApi.Models;
 using ShelfApi.Services;
 using System;
+using System.Threading.Tasks;
 
 namespace ShelfApi.Controllers;
 
@@ -12,6 +12,7 @@ namespace ShelfApi.Controllers;
 public class ItemController : ControllerBase
 {
     private readonly IItemService _itemService;
+
     public ItemController(IItemService itemService)
     {
         _itemService = itemService;
@@ -55,7 +56,7 @@ public class ItemController : ControllerBase
         }
         catch (InexistentProviderException)
         {
-            return NotFound($"O fornecedorId: {item.FornecedorId} n„o existe.");
+            return NotFound($"O fornecedorId: {item.FornecedorId} n√£o existe.");
         }
     }
 
@@ -70,8 +71,20 @@ public class ItemController : ControllerBase
         }
         catch (ItemNotFoundException)
         {
-            return NotFound($"O item: {item.Nome} n„o foi encontrado.");
+            return NotFound($"O item: {item.Nome} n√£o foi encontrado.");
         }
+    }
+
+    [HttpPatch]
+    [Route("ToggleStatus/{id}")]
+    public async Task<IActionResult> ToggleStatus(int id)
+    {
+        var success = await _itemService.ToggleStatusAsync(id);
+        if (!success)
+        {
+            return NotFound(new { message = "Item n√£o encontrado." });
+        }
+        return Ok(new { message = "Status do item alterado com sucesso." });
     }
 
     [HttpDelete]
@@ -83,9 +96,17 @@ public class ItemController : ControllerBase
             await _itemService.DeleteItem(id);
             return NoContent();
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (ItemNotFoundException)
         {
             return NotFound();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Erro ao excluir item: {ex.Message}" });
         }
     }
 }

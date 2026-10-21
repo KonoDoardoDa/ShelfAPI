@@ -1,4 +1,5 @@
-﻿using ShelfApi.Models;
+using ShelfApi.Models;
+
 namespace ShelfApi.Repositories
 {
     public interface IFornecedorRepository
@@ -7,5 +8,6 @@ namespace ShelfApi.Repositories
         Task<int> CreateFornecedor(Fornecedor fornecedor);
         Task<int> UpdateFornecedor(Fornecedor fornecedor);
         Task<bool> DeleteFornecedor(int fornecedorId);
+        Task<bool> ToggleStatus(int id);
     }
 }

@@ -6,5 +6,6 @@ public class KitDetails
 {
     public int Id { get; set; }
     public string? Nome { get; set; }
+    public bool Ativo { get; set; } = true;
     public List<KitItemDetail> Items { get; set; } = new();
 }
