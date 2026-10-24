@@ -20,7 +20,7 @@ public class KitItemRepository : IKitItemRepository
 
     public async Task<IEnumerable<KitItem>> GetAllAsync()
     {
-        const string sql = @"SELECT KitId, ItemId, Quantidade, IsPainel FROM KitItem;";
+        const string sql = @"SELECT KitId, ItemId, Quantidade, IsPainel FROM kititem;";
         using var db = _factory.CreateConnection();
         return await db.QueryAsync<KitItem>(sql);
     }
@@ -28,7 +28,7 @@ public class KitItemRepository : IKitItemRepository
     public async Task<IEnumerable<KitItem>> GetByKitIdAsync(int kitId)
     {
         const string sql = @"SELECT KitId, ItemId, Quantidade, IsPainel
-                             FROM KitItem
+                             FROM kititem
                              WHERE KitId = @kitId;";
         using var db = _factory.CreateConnection();
         return await db.QueryAsync<KitItem>(sql, new { kitId });
@@ -37,7 +37,7 @@ public class KitItemRepository : IKitItemRepository
     public async Task<KitItem?> GetKitItemAsync(int kitId, int itemId)
     {
         const string sql = @"SELECT KitId, ItemId, Quantidade, IsPainel
-                             FROM KitItem
+                             FROM kititem
                              WHERE KitId = @kitId AND ItemId = @itemId;";
 
         using var db = _factory.CreateConnection();
@@ -53,7 +53,7 @@ public class KitItemRepository : IKitItemRepository
         parameters.Add("@isPainel", kitItem.IsPainel);
 
         const string sql = @"
-            INSERT INTO KitItem (KitId, ItemId, Quantidade, IsPainel)
+            INSERT INTO kititem (KitId, ItemId, Quantidade, IsPainel)
             VALUES (@kitId, @itemId, @quantidade, @isPainel);";
 
         using var db = _factory.CreateConnection();
@@ -77,7 +77,7 @@ public class KitItemRepository : IKitItemRepository
         parameters.Add("@isPainel", kitItem.IsPainel);
 
         const string sql = @"
-            UPDATE KitItem
+            UPDATE kititem
             SET Quantidade = @quantidade, IsPainel = @isPainel
             WHERE KitId = @kitId AND ItemId = @itemId;";
 
@@ -88,7 +88,7 @@ public class KitItemRepository : IKitItemRepository
 
     public async Task<bool> DeleteKitItem(int kitId, int itemId)
     {
-        const string sql = @"DELETE FROM KitItem WHERE KitId = @kitId AND ItemId = @itemId;";
+        const string sql = @"DELETE FROM kititem WHERE KitId = @kitId AND ItemId = @itemId;";
 
         using var db = _factory.CreateConnection();
         var affectedRows = await db.ExecuteAsync(sql, new { kitId, itemId });

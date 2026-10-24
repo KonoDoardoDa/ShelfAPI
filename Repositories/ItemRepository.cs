@@ -26,7 +26,7 @@ public class ItemRepository : IItemRepository
                 i.Descricao, 
                 i.Ativo,
                 COALESCE(e.quantidade, 0) AS QuantidadeEstoque 
-            FROM Item i 
+            FROM item i 
             LEFT JOIN estoque e ON i.Id = e.itemId
             ORDER BY i.Id ASC;";
         using var db = _factory.CreateConnection();
@@ -43,7 +43,7 @@ public class ItemRepository : IItemRepository
                 i.Descricao, 
                 i.Ativo,
                 COALESCE(e.quantidade, 0) AS QuantidadeEstoque 
-            FROM Item i 
+            FROM item i 
             LEFT JOIN estoque e ON i.Id = e.itemId 
             WHERE i.Id = @id;";
         using var db = _factory.CreateConnection();
@@ -59,7 +59,7 @@ public class ItemRepository : IItemRepository
         parameters.Add("@ativo", item.Ativo);
 
         string sql = @"
-            INSERT INTO Item (nome, FornecedorId, Descricao, Ativo)
+            INSERT INTO item (nome, FornecedorId, Descricao, Ativo)
             VALUES (@nome, @fornecedorId, @descricao, @ativo);
             SELECT LAST_INSERT_ID();";
         using var db = _factory.CreateConnection();
@@ -89,7 +89,7 @@ public class ItemRepository : IItemRepository
         parameters.Add("@ativo", item.Ativo);
 
         string sql = @"
-            UPDATE Item
+            UPDATE item
             SET nome = @nome,
                 fornecedorId = @fornecedorId,
                 descricao = @descricao,
@@ -109,7 +109,7 @@ public class ItemRepository : IItemRepository
         const string checkSql = @"
             SELECT 
                 (SELECT COUNT(1) FROM movimentacao_estoque WHERE itemId = @id) +
-                (SELECT COUNT(1) FROM KitItem WHERE ItemId = @id) AS Total;";
+                (SELECT COUNT(1) FROM kititem WHERE ItemId = @id) AS Total;";
         var totalLinks = await db.ExecuteScalarAsync<int>(checkSql, new { id });
 
         if (totalLinks > 0)
@@ -120,7 +120,7 @@ public class ItemRepository : IItemRepository
         // Remover saldo do estoque associado
         await db.ExecuteAsync("DELETE FROM estoque WHERE itemId = @Id;", new { Id = id });
 
-        var sql = "DELETE FROM Item WHERE Id = @Id;";
+        var sql = "DELETE FROM item WHERE Id = @Id;";
         var affectedRows = await db.ExecuteAsync(sql, new { Id = id });
 
         return affectedRows > 0;
@@ -128,7 +128,7 @@ public class ItemRepository : IItemRepository
 
     public async Task<bool> ToggleStatus(int id)
     {
-        const string sql = "UPDATE Item SET Ativo = NOT Ativo WHERE Id = @id;";
+        const string sql = "UPDATE item SET Ativo = NOT Ativo WHERE Id = @id;";
         using var db = _factory.CreateConnection();
         return await db.ExecuteAsync(sql, new { id }) > 0;
     }

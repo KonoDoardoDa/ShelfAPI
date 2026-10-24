@@ -30,7 +30,7 @@ public class EstoqueRepository : IEstoqueRepository
                 i.Id AS ItemId, 
                 i.Nome AS NomeItem, 
                 COALESCE(e.quantidade, 0) AS Quantidade 
-            FROM Item i
+            FROM item i
             LEFT JOIN estoque e ON i.Id = e.itemId;";
         using var db = _factory.CreateConnection();
         return await db.QueryAsync<EstoqueSaldoDto>(sql);
@@ -123,8 +123,8 @@ public class EstoqueRepository : IEstoqueRepository
                 m.usuarioNome AS UsuarioNome,
                 m.dataMovimentacao AS DataMovimentacao
             FROM movimentacao_estoque m
-            LEFT JOIN Item i ON m.itemId = i.Id
-            LEFT JOIN Fornecedor f ON i.FornecedorId = f.Id
+            LEFT JOIN item i ON m.itemId = i.Id
+            LEFT JOIN fornecedor f ON i.FornecedorId = f.Id
             WHERE (@itemId IS NULL OR m.itemId = @itemId)
             ORDER BY m.dataMovimentacao DESC, m.id DESC
             LIMIT @limit;";
@@ -163,13 +163,13 @@ public class EstoqueRepository : IEstoqueRepository
             if (dto.FornecedorIdPadrao.HasValue && dto.FornecedorIdPadrao.Value > 0)
             {
                 fornecedorIdFinal = dto.FornecedorIdPadrao.Value;
-                const string sqlForn = "SELECT Nome FROM Fornecedor WHERE Id = @fornecedorIdFinal;";
+                const string sqlForn = "SELECT Nome FROM fornecedor WHERE Id = @fornecedorIdFinal;";
                 fornecedorNomeFinal = await db.QueryFirstOrDefaultAsync<string>(sqlForn, new { fornecedorIdFinal }, transaction) ?? "Fornecedor";
             }
             else if (!string.IsNullOrWhiteSpace(dto.NovoFornecedorNome))
             {
                 var nomeNovo = dto.NovoFornecedorNome.Trim();
-                const string sqlBuscaForn = "SELECT Id FROM Fornecedor WHERE LOWER(Nome) = LOWER(@nomeNovo) LIMIT 1;";
+                const string sqlBuscaForn = "SELECT Id FROM fornecedor WHERE LOWER(Nome) = LOWER(@nomeNovo) LIMIT 1;";
                 var idExistente = await db.QueryFirstOrDefaultAsync<int?>(sqlBuscaForn, new { nomeNovo }, transaction);
 
                 if (idExistente.HasValue && idExistente.Value > 0)
@@ -179,7 +179,7 @@ public class EstoqueRepository : IEstoqueRepository
                 }
                 else
                 {
-                    const string sqlInsForn = "INSERT INTO Fornecedor (Nome, Ativo) VALUES (@nomeNovo, 1); SELECT LAST_INSERT_ID();";
+                    const string sqlInsForn = "INSERT INTO fornecedor (Nome, Ativo) VALUES (@nomeNovo, 1); SELECT LAST_INSERT_ID();";
                     fornecedorIdFinal = await db.ExecuteScalarAsync<int>(sqlInsForn, new { nomeNovo }, transaction);
                     fornecedorNomeFinal = nomeNovo;
                 }
@@ -187,7 +187,7 @@ public class EstoqueRepository : IEstoqueRepository
             else
             {
                 // Busca o primeiro fornecedor ativo ou cria um fornecedor padrão
-                const string sqlPrimeiroForn = "SELECT Id, Nome FROM Fornecedor WHERE Ativo = 1 ORDER BY Id ASC LIMIT 1;";
+                const string sqlPrimeiroForn = "SELECT Id, Nome FROM fornecedor WHERE Ativo = 1 ORDER BY Id ASC LIMIT 1;";
                 var fPadrao = await db.QueryFirstOrDefaultAsync<dynamic>(sqlPrimeiroForn, transaction: transaction);
                 if (fPadrao != null)
                 {
@@ -196,7 +196,7 @@ public class EstoqueRepository : IEstoqueRepository
                 }
                 else
                 {
-                    const string sqlInsPadrao = "INSERT INTO Fornecedor (Nome, Ativo) VALUES ('Fornecedor Geral', 1); SELECT LAST_INSERT_ID();";
+                    const string sqlInsPadrao = "INSERT INTO fornecedor (Nome, Ativo) VALUES ('Fornecedor Geral', 1); SELECT LAST_INSERT_ID();";
                     fornecedorIdFinal = await db.ExecuteScalarAsync<int>(sqlInsPadrao, transaction: transaction);
                     fornecedorNomeFinal = "Fornecedor Geral";
                 }
@@ -214,7 +214,7 @@ public class EstoqueRepository : IEstoqueRepository
                 var fIdItem = (itemDto.FornecedorId.HasValue && itemDto.FornecedorId.Value > 0) ? itemDto.FornecedorId.Value : fornecedorIdFinal;
 
                 // Verificar se o item já existe pelo Nome
-                const string sqlBuscaItem = "SELECT Id, Nome FROM Item WHERE LOWER(Nome) = LOWER(@nomeItem) LIMIT 1;";
+                const string sqlBuscaItem = "SELECT Id, Nome FROM item WHERE LOWER(Nome) = LOWER(@nomeItem) LIMIT 1;";
                 var itemExistente = await db.QueryFirstOrDefaultAsync<dynamic>(sqlBuscaItem, new { nomeItem }, transaction);
 
                 int itemIdFinal;
@@ -253,7 +253,7 @@ public class EstoqueRepository : IEstoqueRepository
                         : (!string.IsNullOrWhiteSpace(itemDto.CodigoReferencia) ? $"Ref: {itemDto.CodigoReferencia.Trim()}" : null);
 
                     const string sqlInsItem = @"
-                        INSERT INTO Item (Nome, FornecedorId, Descricao, Ativo) 
+                        INSERT INTO item (Nome, FornecedorId, Descricao, Ativo) 
                         VALUES (@nomeItem, @fIdItem, @desc, 1); 
                         SELECT LAST_INSERT_ID();";
                     itemIdFinal = await db.ExecuteScalarAsync<int>(sqlInsItem, new { nomeItem, fIdItem, desc }, transaction);

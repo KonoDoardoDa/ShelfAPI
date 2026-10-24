@@ -32,8 +32,8 @@ public class SoftwareRepository : ISoftwareRepository
                 s.Status, 
                 s.Observacoes, 
                 s.DataCriacao
-            FROM Software s
-            LEFT JOIN Kit k ON s.KitId = k.Id
+            FROM software s
+            LEFT JOIN kit k ON s.KitId = k.Id
             ORDER BY s.DataInstalacao DESC;";
         return await db.QueryAsync<Software>(sql);
     }
@@ -54,8 +54,8 @@ public class SoftwareRepository : ISoftwareRepository
                 s.Status, 
                 s.Observacoes, 
                 s.DataCriacao
-            FROM Software s
-            LEFT JOIN Kit k ON s.KitId = k.Id
+            FROM software s
+            LEFT JOIN kit k ON s.KitId = k.Id
             WHERE s.Id = @Id;";
         return await db.QueryFirstOrDefaultAsync<Software>(sql, new { Id = id });
     }
@@ -64,7 +64,7 @@ public class SoftwareRepository : ISoftwareRepository
     {
         using var db = _factory.CreateConnection();
         const string sql = @"
-            INSERT INTO Software (NomeSoftware, Versao, Cliente, KitId, NomeKit, TipoDispositivo, DataInstalacao, Status, Observacoes, DataCriacao)
+            INSERT INTO software (NomeSoftware, Versao, Cliente, KitId, NomeKit, TipoDispositivo, DataInstalacao, Status, Observacoes, DataCriacao)
             VALUES (@NomeSoftware, @Versao, @Cliente, @KitId, @NomeKit, @TipoDispositivo, @DataInstalacao, @Status, @Observacoes, @DataCriacao);
             SELECT LAST_INSERT_ID();";
         
@@ -80,7 +80,7 @@ public class SoftwareRepository : ISoftwareRepository
     {
         using var db = _factory.CreateConnection();
         const string sql = @"
-            UPDATE Software 
+            UPDATE software 
             SET NomeSoftware = @NomeSoftware,
                 Versao = @Versao,
                 Cliente = @Cliente,
@@ -98,7 +98,7 @@ public class SoftwareRepository : ISoftwareRepository
     public async Task<bool> DeleteAsync(int id)
     {
         using var db = _factory.CreateConnection();
-        const string sql = "DELETE FROM Software WHERE Id = @Id;";
+        const string sql = "DELETE FROM software WHERE Id = @Id;";
         var rows = await db.ExecuteAsync(sql, new { Id = id });
         return rows > 0;
     }

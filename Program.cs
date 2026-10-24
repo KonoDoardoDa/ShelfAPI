@@ -115,15 +115,36 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Habilita Swagger tanto em Desenvolvimento quanto em Produção (Render)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ShelfApi v1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseCors("AllowFrontend");
-app.UseHttpsRedirection();
+
+// Middleware global para retornar mensagens de erro claras em JSON (evita 500 vazio e mantém cabeçalhos CORS)
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json; charset=utf-8";
+        var errorPayload = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            message = $"Erro interno na API: {ex.Message}",
+            detail = ex.InnerException?.Message
+        });
+        await context.Response.WriteAsync(errorPayload);
+    }
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

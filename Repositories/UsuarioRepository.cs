@@ -18,21 +18,21 @@ public class UsuarioRepository : IUsuarioRepository
 
     public async Task<IEnumerable<Usuario>> GetAllAsync()
     {
-        var sql = "SELECT Id, Nome, Email, SenhaHash, Role, Ativo, DataCriacao FROM Usuario ORDER BY Id DESC;";
+        var sql = "SELECT Id, Nome, Email, SenhaHash, Role, Ativo, DataCriacao FROM usuario ORDER BY Id DESC;";
         using var db = _factory.CreateConnection();
         return await db.QueryAsync<Usuario>(sql);
     }
 
     public async Task<Usuario?> GetByIdAsync(int id)
     {
-        var sql = "SELECT Id, Nome, Email, SenhaHash, Role, Ativo, DataCriacao FROM Usuario WHERE Id = @id;";
+        var sql = "SELECT Id, Nome, Email, SenhaHash, Role, Ativo, DataCriacao FROM usuario WHERE Id = @id;";
         using var db = _factory.CreateConnection();
         return await db.QueryFirstOrDefaultAsync<Usuario>(sql, new { id });
     }
 
     public async Task<Usuario?> GetByEmailAsync(string email)
     {
-        var sql = "SELECT Id, Nome, Email, SenhaHash, Role, Ativo, DataCriacao FROM Usuario WHERE LOWER(Email) = LOWER(@email);";
+        var sql = "SELECT Id, Nome, Email, SenhaHash, Role, Ativo, DataCriacao FROM usuario WHERE LOWER(Email) = LOWER(@email);";
         using var db = _factory.CreateConnection();
         return await db.QueryFirstOrDefaultAsync<Usuario>(sql, new { email });
     }
@@ -40,7 +40,7 @@ public class UsuarioRepository : IUsuarioRepository
     public async Task<int> CreateAsync(Usuario usuario)
     {
         var sql = @"
-            INSERT INTO Usuario (Nome, Email, SenhaHash, Role, Ativo, DataCriacao)
+            INSERT INTO usuario (Nome, Email, SenhaHash, Role, Ativo, DataCriacao)
             VALUES (@Nome, @Email, @SenhaHash, @Role, @Ativo, @DataCriacao);
             SELECT LAST_INSERT_ID();";
 
@@ -56,7 +56,7 @@ public class UsuarioRepository : IUsuarioRepository
     public async Task<bool> UpdateAsync(Usuario usuario)
     {
         var sql = @"
-            UPDATE Usuario
+            UPDATE usuario
             SET Nome = @Nome,
                 Email = @Email,
                 Role = @Role,
@@ -70,7 +70,7 @@ public class UsuarioRepository : IUsuarioRepository
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var sql = "DELETE FROM Usuario WHERE Id = @id;";
+        var sql = "DELETE FROM usuario WHERE Id = @id;";
         using var db = _factory.CreateConnection();
         var rows = await db.ExecuteAsync(sql, new { id });
         return rows > 0;

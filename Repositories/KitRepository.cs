@@ -16,7 +16,7 @@ public class KitRepository : IKitRepository
 
     public async Task<IEnumerable<Kit>> GetAllAsync()
     {
-        const string sql = @"SELECT Id, Nome, Ativo FROM Kit ORDER BY Id ASC;";
+        const string sql = @"SELECT Id, Nome, Ativo FROM kit ORDER BY Id ASC;";
 
         using var db = _factory.CreateConnection();
         return await db.QueryAsync<Kit>(sql);
@@ -25,7 +25,7 @@ public class KitRepository : IKitRepository
     public async Task<Kit?> GetKitByIdAsync(int id)
     {
         const string sql = @"SELECT Id, Nome, Ativo
-                             FROM Kit
+                             FROM kit
                              WHERE Id = @id;";
 
         using var db = _factory.CreateConnection();
@@ -39,7 +39,7 @@ public class KitRepository : IKitRepository
         parameters.Add("@ativo", kit.Ativo);
 
         const string sql = @"
-            INSERT INTO Kit (Nome, Ativo)
+            INSERT INTO kit (Nome, Ativo)
             VALUES (@nome, @ativo);
             SELECT LAST_INSERT_ID();";
 
@@ -56,7 +56,7 @@ public class KitRepository : IKitRepository
         parameters.Add("@ativo", kit.Ativo);
 
         const string sql = @"
-            UPDATE Kit
+            UPDATE kit
             SET Nome = @nome,
                 Ativo = @ativo
             WHERE Id = @id;";
@@ -73,9 +73,9 @@ public class KitRepository : IKitRepository
         // Verificar se existem vínculos na composição, histórico de movimentação, instalações em softwares ou saldo físico
         const string checkSql = @"
             SELECT 
-                (SELECT COUNT(1) FROM KitItem WHERE KitId = @id) +
+                (SELECT COUNT(1) FROM kititem WHERE KitId = @id) +
                 (SELECT COUNT(1) FROM movimentacao_kit WHERE kitId = @id) +
-                (SELECT COUNT(1) FROM Software WHERE KitId = @id) +
+                (SELECT COUNT(1) FROM software WHERE KitId = @id) +
                 (SELECT COALESCE(SUM(quantidade), 0) FROM estoque_kit WHERE kitId = @id) AS Total;";
         var totalLinks = await db.ExecuteScalarAsync<int>(checkSql, new { id });
 
@@ -85,17 +85,17 @@ public class KitRepository : IKitRepository
         }
 
         // Se for kit virgem (sem histórico e sem saldo), remove itens da composição e saldo zerado
-        await db.ExecuteAsync("DELETE FROM KitItem WHERE KitId = @id;", new { id });
+        await db.ExecuteAsync("DELETE FROM kititem WHERE KitId = @id;", new { id });
         await db.ExecuteAsync("DELETE FROM estoque_kit WHERE kitId = @id;", new { id });
 
-        const string sql = "DELETE FROM Kit WHERE Id = @Id;";
+        const string sql = "DELETE FROM kit WHERE Id = @Id;";
         var affectedRows = await db.ExecuteAsync(sql, new { Id = id });
         return affectedRows > 0;
     }
 
     public async Task<bool> ToggleStatus(int id)
     {
-        const string sql = "UPDATE Kit SET Ativo = NOT Ativo WHERE Id = @id;";
+        const string sql = "UPDATE kit SET Ativo = NOT Ativo WHERE Id = @id;";
         using var db = _factory.CreateConnection();
         return await db.ExecuteAsync(sql, new { id }) > 0;
     }
@@ -111,9 +111,9 @@ public class KitRepository : IKitRepository
                 i.Nome AS ItemNome,
                 ki.Quantidade AS Quantidade,
                 ki.IsPainel AS IsPainel
-            FROM Kit k
-            LEFT JOIN KitItem ki ON k.Id = ki.KitId
-            LEFT JOIN Item i ON ki.ItemId = i.Id
+            FROM kit k
+            LEFT JOIN kititem ki ON k.Id = ki.KitId
+            LEFT JOIN item i ON ki.ItemId = i.Id
             WHERE k.Id = @id;";
 
         var kitDict = new Dictionary<int, KitDetails>();
